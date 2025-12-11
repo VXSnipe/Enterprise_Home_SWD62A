@@ -7,6 +7,8 @@ namespace EnterpriseHomeAssignment.Models
 {
     public class MenuItem : IItemValidating
     {
+        public string ExternalId { get; set; }
+
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public Guid Id { get; set; }  // Guid

@@ -16,15 +16,15 @@ namespace EnterpriseHomeAssignment.Repositories
             _cache = cache;
         }
 
-        public Task<IEnumerable<object>> GetAllAsync()
+        public Task<IEnumerable<IItemValidating>> GetAllAsync()
         {
-            _cache.TryGetValue(CacheKey, out List<object> items);
-            return Task.FromResult<IEnumerable<object>>(items ?? new List<object>());
+            _cache.TryGetValue(CacheKey, out List<IItemValidating> items);
+            return Task.FromResult<IEnumerable<IItemValidating>>(items ?? new List<IItemValidating>());
         }
 
-        public Task SaveAsync(IEnumerable<object> items)
+        public Task SaveAsync(IEnumerable<IItemValidating> items)
         {
-            _cache.Set(CacheKey, new List<object>(items));
+            _cache.Set(CacheKey, new List<IItemValidating>(items));
             return Task.CompletedTask;
         }
 

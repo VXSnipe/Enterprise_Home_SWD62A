@@ -1,0 +1,20 @@
+@model IEnumerable<EnterpriseHomeAssignment.Models.IItemValidating>
+@{
+    var viewMode = Context.Request.Query["view"].ToString(); // "card" or "row"
+}
+
+<div class="row">
+    @foreach (var item in Model)
+    {
+        if (viewMode == "row")
+        {
+            @Html.Partial(item.GetCardPartial(), item)
+        }
+        else
+        {
+            <div class="col-md-4 mb-3">
+                @Html.Partial(item.GetCardPartial(), item)
+            </div>
+        }
+    }
+</div>

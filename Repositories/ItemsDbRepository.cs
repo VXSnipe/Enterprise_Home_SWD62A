@@ -17,7 +17,7 @@ namespace EnterpriseHomeAssignment.Repositories
             _db = db;
         }
 
-        public async Task<IEnumerable<object>> GetAllAsync()
+        public async Task<IEnumerable<IItemValidating>> GetAllAsync()
         {
             var restaurants = await _db.Restaurants
                 .Include(r => r.MenuItems)
@@ -27,10 +27,13 @@ namespace EnterpriseHomeAssignment.Repositories
                 .Include(m => m.Restaurant)
                 .ToListAsync();
 
-            return restaurants.Cast<object>().Concat(menuItems);
+            var combined = new List<IItemValidating>();
+            combined.AddRange(restaurants);
+            combined.AddRange(menuItems);
+            return combined;
         }
 
-        public async Task SaveAsync(IEnumerable<object> items)
+        public async Task SaveAsync(IEnumerable<IItemValidating> items)
         {
             foreach (var item in items)
             {

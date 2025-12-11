@@ -1,0 +1,9 @@
+@model EnterpriseHomeAssignment.Models.MenuItem
+
+<div class="media mb-3">
+    <img src="@Model.ImagePath" class="mr-3" style="width:64px;height:64px;object-fit:cover;" />
+    <div class="media-body">
+        <h5 class="mt-0">@Model.Title</h5>
+        <p>@Model.Price.ToString("C")</p>
+    </div>
+</div>
