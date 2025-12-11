@@ -1,0 +1,14 @@
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.log
+*.db
+*.mdb
+*.opendb
+*.pidb
+*.svd
+*.idx
+*.lock
