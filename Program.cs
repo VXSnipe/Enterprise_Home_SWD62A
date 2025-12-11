@@ -31,7 +31,6 @@ namespace EnterpriseHomeAssignment
             builder.Services.AddKeyedScoped<IItemsRepository, ItemsInMemoryRepository>("InMemory");
             builder.Services.AddKeyedScoped<IItemsRepository, ItemsDbRepository>("Db");
 
-
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.

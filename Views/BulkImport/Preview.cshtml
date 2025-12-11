@@ -1,0 +1,39 @@
+﻿@model IEnumerable<EnterpriseHomeAssignment.Models.IItemValidating>
+
+<h2>Preview</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Type</th>
+            <th>Details</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            if (item is EnterpriseHomeAssignment.Models.Restaurant r)
+            {
+                <tr>
+                    <td>Restaurant</td>
+                    <td>@r.Name</td>
+                </tr>
+            }
+            else if (item is EnterpriseHomeAssignment.Models.MenuItem m)
+            {
+                <tr>
+                    <td>Menu Item</td>
+                    <td>@m.Title - €@m.Price</td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+<a href="/BulkImport/DownloadZip">Download ZIP</a>
+
+<form method="post" asp-action="Commit" enctype="multipart/form-data">
+    <h4>Upload Images ZIP</h4>
+    <input type="file" name="imagesZip" />
+    <button type="submit">Commit</button>
+</form>
