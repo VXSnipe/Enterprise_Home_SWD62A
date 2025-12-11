@@ -1,6 +1,10 @@
 using EnterpriseHomeAssignment.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using EnterpriseHomeAssignment.Interfaces;
+using EnterpriseHomeAssignment.Repositories;
+using EnterpriseHomeAssignment.Factories;
+
 
 namespace EnterpriseHomeAssignment
 {
@@ -19,6 +23,14 @@ namespace EnterpriseHomeAssignment
             builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
                 .AddEntityFrameworkStores<ApplicationDbContext>();
             builder.Services.AddControllersWithViews();
+
+            builder.Services.AddMemoryCache();
+
+            builder.Services.AddScoped<ImportItemFactory>();
+
+            builder.Services.AddKeyedScoped<IItemsRepository, ItemsInMemoryRepository>("InMemory");
+            builder.Services.AddKeyedScoped<IItemsRepository, ItemsDbRepository>("Db");
+
 
             var app = builder.Build();
 
