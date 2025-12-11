@@ -8,5 +8,6 @@ namespace EnterpriseHomeAssignment.Interfaces
     {
         Task<IEnumerable<IItemValidating>> GetAllAsync();
         Task SaveAsync(IEnumerable<IItemValidating> items);
+        Task ApproveAsync(int[] restaurantIds, Guid[] menuItemIds);
     }
 }

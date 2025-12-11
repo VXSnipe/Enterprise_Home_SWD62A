@@ -1,0 +1,27 @@
+@model IEnumerable<EnterpriseHomeAssignment.Models.Restaurant>
+
+<h2>Pending Restaurants</h2>
+<form method="post" asp-action="Approve">
+    <table class="table">
+        <thead>
+            <tr>
+                <th></th>
+                <th>Name</th>
+                <th>Owner</th>
+                <th>Address</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in Model)
+            {
+                <tr>
+                    <td><input type="checkbox" name="restaurantIds" value="@r.Id" /></td>
+                    <td>@r.Name</td>
+                    <td>@r.OwnerEmailAddress</td>
+                    <td>@r.Address</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <button type="submit" class="btn btn-primary">Approve selected</button>
+</form>

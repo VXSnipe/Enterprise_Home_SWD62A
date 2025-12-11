@@ -1,0 +1,13 @@
+@model IEnumerable<EnterpriseHomeAssignment.Models.Restaurant>
+
+<h2>Your Restaurants</h2>
+@foreach (var r in Model)
+{
+    <div class="card mb-2">
+        <div class="card-body">
+            <h5 class="card-title">@r.Name</h5>
+            <p class="card-text">@r.Description</p>
+            <a class="btn btn-link" asp-action="VerifyRestaurantItems" asp-route-id="@r.Id">View pending menu items</a>
+        </div>
+    </div>
+}
