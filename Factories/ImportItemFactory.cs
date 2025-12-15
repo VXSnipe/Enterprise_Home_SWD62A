@@ -30,7 +30,7 @@ namespace EnterpriseHomeAssignment.Factories
 
                     items.Add(restaurant);
                 }
-                else if (type == "menuitem" || type == "menuItem" || type == "menu-item")
+                else if (type == "menuitem")
                 {
                     var menuItem = new MenuItem
                     {

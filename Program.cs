@@ -10,7 +10,7 @@ namespace EnterpriseHomeAssignment
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
@@ -20,7 +20,7 @@ namespace EnterpriseHomeAssignment
                 options.UseSqlServer(connectionString));
             builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-            builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
+            builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = false)
                 .AddEntityFrameworkStores<ApplicationDbContext>();
             builder.Services.AddControllersWithViews();
 
@@ -32,6 +32,45 @@ namespace EnterpriseHomeAssignment
             builder.Services.AddKeyedScoped<IItemsRepository, ItemsDbRepository>("Db");
 
             var app = builder.Build();
+
+            // Seed admin user for development
+            using (var scope = app.Services.CreateScope())
+            {
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
+                var adminEmail = "admin@example.com";
+                var adminUser = await userManager.FindByEmailAsync(adminEmail);
+                if (adminUser == null)
+                {
+                    var admin = new IdentityUser 
+                    { 
+                        UserName = adminEmail, 
+                        Email = adminEmail, 
+                        EmailConfirmed = true 
+                    };
+                    var result = await userManager.CreateAsync(admin, "Admin@123!");
+                    if (result.Succeeded)
+                    {
+                        Console.WriteLine($"Admin user created: {adminEmail} / Admin@123!");
+                    }
+                }
+                
+                // Seed restaurant owners for testing
+                var owners = new[] { "luca.owner@example.com", "hana.owner@example.com" };
+                foreach (var ownerEmail in owners)
+                {
+                    var owner = await userManager.FindByEmailAsync(ownerEmail);
+                    if (owner == null)
+                    {
+                        var newOwner = new IdentityUser 
+                        { 
+                            UserName = ownerEmail, 
+                            Email = ownerEmail, 
+                            EmailConfirmed = true 
+                        };
+                        await userManager.CreateAsync(newOwner, "Owner@123!");
+                    }
+                }
+            }
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
