@@ -1,10 +1,28 @@
 @model EnterpriseHomeAssignment.Models.Restaurant
 
 <div class="card">
-    <img src="@Model.ImagePath" class="card-img-top" alt="..." />
+    @if (!string.IsNullOrEmpty(Model.ImagePath))
+    {
+        <img src="@Model.ImagePath" class="card-img-top" alt="@Model.Name" style="height: 200px; object-fit: cover;" />
+    }
+    else
+    {
+        <div class="card-img-top bg-secondary text-white d-flex align-items-center justify-content-center" style="height: 200px;">
+            <span>No Image</span>
+        </div>
+    }
     <div class="card-body">
         <h5 class="card-title">@Model.Name</h5>
         <p class="card-text">@Model.Description</p>
         <p class="card-text"><small class="text-muted">@Model.Address</small></p>
+        <p class="card-text"><small class="text-muted">Phone: @Model.Phone</small></p>
+        @if (Model.Status == "Pending")
+        {
+            <span class="badge bg-warning">Pending Approval</span>
+        }
+        else if (Model.Status == "Approved")
+        {
+            <span class="badge bg-success">Approved</span>
+        }
     </div>
 </div>

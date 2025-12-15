@@ -18,16 +18,19 @@ namespace EnterpriseHomeAssignment.Controllers
             _dbRepo = dbRepo;
         }
 
-        public async Task<IActionResult> Catalog(string view = "card")
+        public async Task<IActionResult> Catalog(string view = "card", bool pending = false)
         {
-            var items = (await _dbRepo.GetAllAsync()).Where(i =>
+            var allItems = await _dbRepo.GetAllAsync();
+            
+            var items = allItems.Where(i =>
             {
-                if (i is Restaurant r) return r.Status == "Approved";
-                if (i is MenuItem m) return m.Status == "Approved";
+                if (i is Restaurant r) 
+                    return pending ? r.Status == "Pending" : r.Status == "Approved";
+                if (i is MenuItem m) 
+                    return pending ? m.Status == "Pending" : m.Status == "Approved";
                 return false;
             });
 
-            // pass through view querystring
             return View(items);
         }
 

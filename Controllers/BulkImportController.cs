@@ -56,23 +56,35 @@ namespace EnterpriseHomeAssignment.Controllers
         public async Task<IActionResult> DownloadZip(
             [FromKeyedServices("InMemory")] IItemsRepository tempRepo)
         {
-            var items = await tempRepo.GetAllAsync();
-
-            // Check if default.jpg exists, if not create a placeholder
-            string defaultImagePath = Path.Combine(_env.WebRootPath, "default.jpg");
-            if (!System.IO.File.Exists(defaultImagePath))
+            var items = (await tempRepo.GetAllAsync()).ToList();
+            
+            if (!items.Any())
             {
-                Directory.CreateDirectory(_env.WebRootPath);
-                // Create a minimal 1x1 pixel placeholder image
-                byte[] placeholderImage = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46 };
-                await System.IO.File.WriteAllBytesAsync(defaultImagePath, placeholderImage);
+                TempData["Error"] = "No items to export. Please upload JSON first.";
+                return RedirectToAction("Upload");
             }
 
             var stream = new MemoryStream();
 
             using (var zip = new ZipArchive(stream, ZipArchiveMode.Create, true))
             {
-                byte[] imgBytes = await System.IO.File.ReadAllBytesAsync(defaultImagePath);
+                // Create a simple 1x1 red pixel JPEG as default image
+                byte[] defaultImageBytes = new byte[] {
+                    0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01,
+                    0x01, 0x01, 0x00, 0x48, 0x00, 0x48, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x43,
+                    0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+                    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+                    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+                    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+                    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+                    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xC0, 0x00, 0x0B, 0x08, 0x00, 0x01,
+                    0x00, 0x01, 0x01, 0x01, 0x11, 0x00, 0xFF, 0xC4, 0x00, 0x14, 0x00, 0x01,
+                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                    0x00, 0x00, 0x00, 0x00, 0xFF, 0xC4, 0x00, 0x14, 0x10, 0x01, 0x00, 0x00,
+                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                    0x00, 0x00, 0xFF, 0xDA, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3F, 0x00,
+                    0x7F, 0xFF, 0xD9
+                };
 
                 foreach (var item in items)
                 {
@@ -86,8 +98,10 @@ namespace EnterpriseHomeAssignment.Controllers
                     if (!string.IsNullOrEmpty(id))
                     {
                         var entry = zip.CreateEntry($"item-{id}/default.jpg");
-                        using var entryStream = entry.Open();
-                        await entryStream.WriteAsync(imgBytes, 0, imgBytes.Length);
+                        using (var entryStream = entry.Open())
+                        {
+                            entryStream.Write(defaultImageBytes, 0, defaultImageBytes.Length);
+                        }
                     }
                 }
             }

@@ -1,9 +1,36 @@
 @model EnterpriseHomeAssignment.Models.MenuItem
 
-<div class="media mb-3">
-    <img src="@Model.ImagePath" class="mr-3" style="width:64px;height:64px;object-fit:cover;" />
-    <div class="media-body">
-        <h5 class="mt-0">@Model.Title</h5>
-        <p>@Model.Price.ToString("C")</p>
+<div class="card mb-3">
+    <div class="row g-0">
+        <div class="col-md-2">
+            @if (!string.IsNullOrEmpty(Model.ImagePath))
+            {
+                <img src="@Model.ImagePath" class="img-fluid rounded-start" alt="@Model.Title" style="height: 100%; object-fit: cover;" />
+            }
+            else
+            {
+                <div class="bg-secondary text-white d-flex align-items-center justify-content-center rounded-start" style="height: 100%; min-height: 80px;">
+                    <span>No Image</span>
+                </div>
+            }
+        </div>
+        <div class="col-md-10">
+            <div class="card-body">
+                <h5 class="card-title">@Model.Title</h5>
+                <p class="card-text"><strong>€@Model.Price.ToString("F2")</strong></p>
+                @if (Model.Restaurant != null)
+                {
+                    <p class="card-text"><small class="text-muted">From: @Model.Restaurant.Name</small></p>
+                }
+                @if (Model.Status == "Pending")
+                {
+                    <span class="badge bg-warning">Pending Approval</span>
+                }
+                else if (Model.Status == "Approved")
+                {
+                    <span class="badge bg-success">Approved</span>
+                }
+            </div>
+        </div>
     </div>
 </div>

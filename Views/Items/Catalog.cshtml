@@ -1,20 +1,51 @@
 @model IEnumerable<EnterpriseHomeAssignment.Models.IItemValidating>
 @{
+    ViewData["Title"] = "Catalog";
     var viewMode = Context.Request.Query["view"].ToString(); // "card" or "row"
+    var showPending = Context.Request.Query["pending"].ToString() == "true";
 }
 
-<div class="row">
-    @foreach (var item in Model)
+<h2>Item Catalog</h2>
+
+<div class="mb-3">
+    <a asp-action="Catalog" asp-route-view="card" class="btn btn-sm btn-outline-primary">Card View</a>
+    <a asp-action="Catalog" asp-route-view="row" class="btn btn-sm btn-outline-primary">Row View</a>
+    @if (User.Identity?.IsAuthenticated == true)
     {
-        if (viewMode == "row")
-        {
-            @Html.Partial(item.GetCardPartial(), item)
-        }
-        else
-        {
-            <div class="col-md-4 mb-3">
-                @Html.Partial(item.GetCardPartial(), item)
-            </div>
-        }
+        <a asp-action="Catalog" asp-route-pending="true" class="btn btn-sm btn-outline-warning">Show Pending</a>
+        <a asp-action="Verification" class="btn btn-sm btn-success">Approve Items</a>
     }
 </div>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">
+        <h4>No items found</h4>
+        <p>There are no @(showPending ? "pending" : "approved") items in the catalog yet.</p>
+        <ul>
+            <li>Upload items via <a asp-controller="BulkImport" asp-action="Upload">Bulk Import</a></li>
+            @if (!showPending)
+            {
+                <li>Or approve pending items at <a asp-action="Verification">Verification</a></li>
+            }
+        </ul>
+    </div>
+}
+else
+{
+    <div class="row">
+        @foreach (var item in Model)
+        {
+            if (viewMode == "row")
+            {
+                @Html.Partial(item.GetCardPartial(), item)
+            }
+            else
+            {
+                <div class="col-md-4 mb-3">
+                    @Html.Partial(item.GetCardPartial(), item)
+                </div>
+            }
+        }
+    </div>
+}
