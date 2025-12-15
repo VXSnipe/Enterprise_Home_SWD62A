@@ -9,6 +9,9 @@ namespace EnterpriseHomeAssignment.Models
     {
         public string ExternalId { get; set; }
 
+        [NotMapped]
+        public string RestaurantExternalId { get; set; }
+
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public Guid Id { get; set; }  // Guid

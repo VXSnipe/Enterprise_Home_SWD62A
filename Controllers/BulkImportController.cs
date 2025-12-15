@@ -5,20 +5,20 @@ using Microsoft.AspNetCore.Mvc;
 using System.IO.Compression;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
-using System;
 using System.IO;
+using System;
 
 namespace EnterpriseHomeAssignment.Controllers
 {
     public class BulkImportController : Controller
     {
         private readonly ImportItemFactory _factory;
+        private readonly IWebHostEnvironment _env;
 
-        public BulkImportController(ImportItemFactory factory)
+        public BulkImportController(ImportItemFactory factory, IWebHostEnvironment env)
         {
             _factory = factory;
+            _env = env;
         }
 
         public IActionResult Upload()
@@ -54,17 +54,25 @@ namespace EnterpriseHomeAssignment.Controllers
         }
 
         public async Task<IActionResult> DownloadZip(
-            [FromKeyedServices("InMemory")] IItemsRepository tempRepo,
-            IWebHostEnvironment env)
+            [FromKeyedServices("InMemory")] IItemsRepository tempRepo)
         {
             var items = await tempRepo.GetAllAsync();
+
+            // Check if default.jpg exists, if not create a placeholder
+            string defaultImagePath = Path.Combine(_env.WebRootPath, "default.jpg");
+            if (!System.IO.File.Exists(defaultImagePath))
+            {
+                Directory.CreateDirectory(_env.WebRootPath);
+                // Create a minimal 1x1 pixel placeholder image
+                byte[] placeholderImage = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46 };
+                await System.IO.File.WriteAllBytesAsync(defaultImagePath, placeholderImage);
+            }
 
             var stream = new MemoryStream();
 
             using (var zip = new ZipArchive(stream, ZipArchiveMode.Create, true))
             {
-                string defaultImage = Path.Combine(env.WebRootPath, "default.jpg");
-                byte[] imgBytes = System.IO.File.ReadAllBytes(defaultImage);
+                byte[] imgBytes = await System.IO.File.ReadAllBytesAsync(defaultImagePath);
 
                 foreach (var item in items)
                 {
@@ -72,24 +80,24 @@ namespace EnterpriseHomeAssignment.Controllers
 
                     if (item is Restaurant r)
                         id = r.ExternalId;
-                    if (item is MenuItem m)
+                    else if (item is MenuItem m)
                         id = m.ExternalId;
 
-                    var entry = zip.CreateEntry($"item-{id}/default.jpg");
-
-                    using var entryStream = entry.Open();
-                    entryStream.Write(imgBytes, 0, imgBytes.Length);
+                    if (!string.IsNullOrEmpty(id))
+                    {
+                        var entry = zip.CreateEntry($"item-{id}/default.jpg");
+                        using var entryStream = entry.Open();
+                        await entryStream.WriteAsync(imgBytes, 0, imgBytes.Length);
+                    }
                 }
             }
 
             stream.Position = 0;
-
             return File(stream, "application/zip", "images-template.zip");
         }
 
         [HttpPost]
         public async Task<IActionResult> Commit(IFormFile imagesZip,
-            IWebHostEnvironment env,
             [FromKeyedServices("InMemory")] IItemsRepository tempRepo,
             [FromKeyedServices("Db")] IItemsRepository dbRepo)
         {
@@ -101,7 +109,24 @@ namespace EnterpriseHomeAssignment.Controllers
 
             var items = (await tempRepo.GetAllAsync()).ToList();
 
-            // Extract zip
+            // Resolve MenuItem → Restaurant relationships BEFORE saving
+            var restaurants = items.OfType<Restaurant>().ToList();
+            var menuItems = items.OfType<MenuItem>().ToList();
+
+            foreach (var menuItem in menuItems)
+            {
+                if (!string.IsNullOrEmpty(menuItem.RestaurantExternalId))
+                {
+                    var matchedRestaurant = restaurants.FirstOrDefault(r => r.ExternalId == menuItem.RestaurantExternalId);
+                    if (matchedRestaurant != null)
+                    {
+                        menuItem.Restaurant = matchedRestaurant;
+                        // RestaurantId will be set by EF when restaurant is saved first
+                    }
+                }
+            }
+
+            // Extract ZIP to a temp directory
             string tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             Directory.CreateDirectory(tempPath);
 
@@ -110,8 +135,8 @@ namespace EnterpriseHomeAssignment.Controllers
                 archive.ExtractToDirectory(tempPath, true);
             }
 
-            // Assign images
-            string imagesFolder = Path.Combine(env.WebRootPath, "images");
+            // Save images to /wwwroot/images/
+            string imagesFolder = Path.Combine(_env.WebRootPath, "images");
             Directory.CreateDirectory(imagesFolder);
 
             foreach (var folder in Directory.GetDirectories(tempPath))
@@ -138,14 +163,16 @@ namespace EnterpriseHomeAssignment.Controllers
                 }
             }
 
+            // Save to DB with resolved relationships
             await dbRepo.SaveAsync(items);
 
+            // Clear in-memory cache
             if (tempRepo is EnterpriseHomeAssignment.Repositories.ItemsInMemoryRepository repo)
             {
                 repo.Clear();
             }
 
-            return RedirectToAction("Index", "Home");
+            return RedirectToAction("Catalog", "Items");
         }
     }
 }

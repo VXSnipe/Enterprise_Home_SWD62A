@@ -37,15 +37,9 @@ namespace EnterpriseHomeAssignment.Factories
                         ExternalId = element.TryGetProperty("id", out var idp) ? idp.GetString() : null,
                         Title = element.TryGetProperty("title", out var tp) ? tp.GetString() : null,
                         Price = element.TryGetProperty("price", out var pp) && pp.TryGetDecimal(out var dec) ? dec : 0m,
-                        // restaurant in appendix is given as external id like "R-1001"; store in RestaurantId temporarily as 0
-                        // We'll resolve to actual Restaurant FK on commit when saving to DB
-                        Status = "Pending"
+                        Status = "Pending",
+                        RestaurantExternalId = element.TryGetProperty("restaurantId", out var rip) ? rip.GetString() : null
                     };
-
-                    // capture restaurant external id in RestaurantId via negative hash? Instead use ExternalId on menuitems and rely on matching in commit
-                    var restExt = element.TryGetProperty("restaurantId", out var rip) ? rip.GetString() : null;
-                    // temporarily store restaurant external id in ExternalIdOwner (not present) -> instead embed into Title? better: use ExternalId for item id and store owner ext in ImagePath (hack) -> Since models don't have a field for restaurant external id, we'll set ImagePath to hold restaurant external id temporarily
-                    menuItem.ImagePath = restExt; 
 
                     items.Add(menuItem);
                 }
