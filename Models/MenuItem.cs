@@ -1,46 +1,42 @@
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace EnterpriseHomeAssignment.Models
 {
     public class MenuItem : IItemValidating
     {
-        public string ExternalId { get; set; }
+        public Guid Id { get; set; }
 
-        [NotMapped]
-        public string RestaurantExternalId { get; set; }
+        [Required]
+        public string ExternalId { get; set; } = null!;
 
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public Guid Id { get; set; }  // Guid
+        [Required]
+        public string Title { get; set; } = null!;
 
-        [Required, MaxLength(200)]
-        public string Title { get; set; }
-
-        [Column(TypeName = "decimal(8,2)")]
         public decimal Price { get; set; }
 
         [Required]
+        public string Status { get; set; } = null!;
+
+        public string? ImagePath { get; set; }
+
         public int RestaurantId { get; set; }
+        public Restaurant Restaurant { get; set; } = null!;
 
-        public Restaurant Restaurant { get; set; }
+        public string RestaurantExternalId { get; set; } = null!;
 
-        [Required, MaxLength(50)]
-        public string Status { get; set; } = "Pending";
-
-        public string ImagePath { get; set; }
-
-        // Implementation of IItemValidating
         public List<string> GetValidators()
         {
-            // Restaurant owner is the validator
-            return Restaurant != null
-                ? new List<string> { Restaurant.OwnerEmailAddress }
-                : new List<string>();
+            return new List<string>
+        {
+            "admin@example.com",
+            Restaurant.OwnerEmailAddress
+        };
         }
 
-        public string GetCardPartial() => "_MenuItemRow";
+
+        public string GetCardPartial()
+        {
+            return "_MenuItemCard";
+        }
     }
 }

@@ -1,9 +1,18 @@
 using EnterpriseHomeAssignment.Data;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
+using EnterpriseHomeAssignment.Factories;
+using EnterpriseHomeAssignment.Filters;
 using EnterpriseHomeAssignment.Interfaces;
 using EnterpriseHomeAssignment.Repositories;
-using EnterpriseHomeAssignment.Factories;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+
+///
+/// Accounts
+/// ADMIN user admin@example.com / Admin@123!
+
+/// OWNER user luca.owner@example.com / Owner@123!
+/// 
+///
 
 
 namespace EnterpriseHomeAssignment
@@ -25,6 +34,8 @@ namespace EnterpriseHomeAssignment
             builder.Services.AddControllersWithViews();
 
             builder.Services.AddMemoryCache();
+
+            builder.Services.AddScoped<ApprovalAuthorizationFilter>();
 
             builder.Services.AddScoped<ImportItemFactory>();
 
@@ -88,7 +99,7 @@ namespace EnterpriseHomeAssignment
             app.UseStaticFiles();
 
             app.UseRouting();
-
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.MapControllerRoute(

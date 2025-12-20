@@ -19,12 +19,12 @@ namespace EnterpriseHomeAssignment.Factories
                 {
                     var restaurant = new Restaurant
                     {
-                        ExternalId = element.TryGetProperty("id", out var idp) ? idp.GetString() : null,
-                        Name = element.TryGetProperty("name", out var np) ? np.GetString() : null,
-                        OwnerEmailAddress = element.TryGetProperty("ownerEmailAddress", out var op) ? op.GetString() : null,
-                        Description = element.TryGetProperty("description", out var dp) ? dp.GetString() : null,
-                        Address = element.TryGetProperty("address", out var ap) ? ap.GetString() : null,
-                        Phone = element.TryGetProperty("phone", out var pp) ? pp.GetString() : null,
+                        ExternalId = element.GetProperty("externalId").GetString(),
+                        Name = element.GetProperty("name").GetString(),
+                        OwnerEmailAddress = element.GetProperty("ownerEmailAddress").GetString(),
+                        Description = element.TryGetProperty("description", out var d) ? d.GetString() : null,
+                        Address = element.TryGetProperty("address", out var a) ? a.GetString() : null,
+                        Phone = element.TryGetProperty("phone", out var p) ? p.GetString() : null,
                         Status = "Pending"
                     };
 
@@ -34,11 +34,11 @@ namespace EnterpriseHomeAssignment.Factories
                 {
                     var menuItem = new MenuItem
                     {
-                        ExternalId = element.TryGetProperty("id", out var idp) ? idp.GetString() : null,
-                        Title = element.TryGetProperty("title", out var tp) ? tp.GetString() : null,
-                        Price = element.TryGetProperty("price", out var pp) && pp.TryGetDecimal(out var dec) ? dec : 0m,
-                        Status = "Pending",
-                        RestaurantExternalId = element.TryGetProperty("restaurantId", out var rip) ? rip.GetString() : null
+                        ExternalId = element.GetProperty("externalId").GetString(),
+                        Title = element.GetProperty("title").GetString(),
+                        Price = element.GetProperty("price").GetDecimal(),
+                        RestaurantExternalId = element.GetProperty("restaurantId").GetString(),
+                        Status = "Pending"
                     };
 
                     items.Add(menuItem);

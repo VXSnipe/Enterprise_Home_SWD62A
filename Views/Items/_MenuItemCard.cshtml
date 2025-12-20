@@ -1,0 +1,14 @@
+﻿@model EnterpriseHomeAssignment.Models.MenuItem
+
+<div class="card h-100">
+    @if (!string.IsNullOrEmpty(Model.ImagePath))
+    {
+        <img src="@Model.ImagePath" class="card-img-top" />
+    }
+
+    <div class="card-body">
+        <h5 class="card-title">@Model.Title</h5>
+        <p class="card-text">€@Model.Price</p>
+        <span class="badge bg-secondary">@Model.Status</span>
+    </div>
+</div>

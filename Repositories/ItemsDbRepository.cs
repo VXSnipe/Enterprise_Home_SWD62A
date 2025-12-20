@@ -2,10 +2,10 @@
 using EnterpriseHomeAssignment.Models;
 using EnterpriseHomeAssignment.Data;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System;
 
 namespace EnterpriseHomeAssignment.Repositories
 {
@@ -36,33 +36,51 @@ namespace EnterpriseHomeAssignment.Repositories
 
         public async Task SaveAsync(IEnumerable<IItemValidating> items)
         {
-            foreach (var item in items)
+            var restaurants = items.OfType<Restaurant>().ToList();
+            var menuItems = items.OfType<MenuItem>().ToList();
+
+            if (restaurants.Any())
             {
-                if (item is Restaurant r)
-                {
-                    _db.Restaurants.Add(r);
-                }
-                else if (item is MenuItem m)
-                {
-                    _db.MenuItems.Add(m);
-                }
+                _db.Restaurants.AddRange(restaurants);
+                await _db.SaveChangesAsync();
             }
 
-            await _db.SaveChangesAsync();
+            foreach (var menuItem in menuItems)
+            {
+                var restaurant = restaurants
+                    .FirstOrDefault(r => r.ExternalId == menuItem.RestaurantExternalId);
+
+                if (restaurant == null)
+                    throw new Exception("Restaurant not found for menu item");
+
+                menuItem.RestaurantId = restaurant.Id;
+            }
+
+            if (menuItems.Any())
+            {
+                _db.MenuItems.AddRange(menuItems);
+                await _db.SaveChangesAsync();
+            }
         }
 
         public async Task ApproveAsync(int[] restaurantIds, Guid[] menuItemIds)
         {
             if (restaurantIds != null && restaurantIds.Length > 0)
             {
-                var rests = await _db.Restaurants.Where(r => restaurantIds.Contains(r.Id)).ToListAsync();
+                var rests = await _db.Restaurants
+                    .Where(r => restaurantIds.Contains(r.Id))
+                    .ToListAsync();
+
                 foreach (var r in rests)
                     r.Status = "Approved";
             }
 
             if (menuItemIds != null && menuItemIds.Length > 0)
             {
-                var items = await _db.MenuItems.Where(m => menuItemIds.Contains(m.Id)).ToListAsync();
+                var items = await _db.MenuItems
+                    .Where(m => menuItemIds.Contains(m.Id))
+                    .ToListAsync();
+
                 foreach (var m in items)
                     m.Status = "Approved";
             }

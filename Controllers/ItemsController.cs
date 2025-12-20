@@ -1,101 +1,100 @@
 using EnterpriseHomeAssignment.Interfaces;
 using EnterpriseHomeAssignment.Models;
+using EnterpriseHomeAssignment.Filters;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
-using System;
-using EnterpriseHomeAssignment.Attributes;
-using Microsoft.AspNetCore.Authorization;
 
 namespace EnterpriseHomeAssignment.Controllers
 {
+    [Authorize]
     public class ItemsController : Controller
     {
-        private readonly IItemsRepository _dbRepo;
-
-        public ItemsController([FromKeyedServices("Db")] IItemsRepository dbRepo)
+        private bool IsAdmin()
         {
-            _dbRepo = dbRepo;
+            return User.Identity?.Name == "admin@example.com";
         }
 
-        public async Task<IActionResult> Catalog(string view = "card", bool pending = false)
+        // SE3.3 — Verification action
+        public async Task<IActionResult> Verification(
+            [FromKeyedServices("Db")] IItemsRepository repo)
         {
-            var allItems = await _dbRepo.GetAllAsync();
-            
-            var items = allItems.Where(i =>
+            var allItems = await repo.GetAllAsync();
+
+            if (IsAdmin())
             {
-                if (i is Restaurant r) 
-                    return pending ? r.Status == "Pending" : r.Status == "Approved";
-                if (i is MenuItem m) 
-                    return pending ? m.Status == "Pending" : m.Status == "Approved";
-                return false;
-            });
+                var pendingRestaurants = allItems
+                    .OfType<Restaurant>()
+                    .Where(r => r.Status == "Pending")
+                    .ToList();
 
-            return View(items);
-        }
-
-        [Authorize]
-        public async Task<IActionResult> Verification()
-        {
-            var user = User;
-            var email = user.Identity.Name ?? user.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
-
-            bool isAdmin = string.Equals(email, "admin@example.com", StringComparison.OrdinalIgnoreCase);
-
-            if (isAdmin)
-            {
-                // Show pending restaurants
-                var all = await _dbRepo.GetAllAsync();
-                var pendingRestaurants = all.OfType<Restaurant>().Where(r => r.Status == "Pending");
                 return View("VerifyRestaurants", pendingRestaurants);
             }
-            else
-            {
-                // Show restaurants owned by this owner
-                var all = await _dbRepo.GetAllAsync();
-                var myRestaurants = all.OfType<Restaurant>().Where(r => string.Equals(r.OwnerEmailAddress, email, StringComparison.OrdinalIgnoreCase));
-                return View("VerifyOwner", myRestaurants);
-            }
+
+            var userEmail = User.Claims
+            .FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Email)
+            ?.Value;
+
+
+            var ownedRestaurants = allItems
+                .OfType<Restaurant>()
+                .Where(r => r.OwnerEmailAddress == userEmail)
+                .ToList();
+
+            return View("VerifyOwner", ownedRestaurants);
         }
 
-        [HttpPost]
-        [Authorize]
-        public async Task<IActionResult> Approve(int[] restaurantIds, Guid[] menuItemIds)
+        public async Task<IActionResult> VerifyRestaurantItems(
+            int id,
+            [FromKeyedServices("Db")] IItemsRepository repo)
         {
-            // perform validation: ensure current user is allowed to approve each item
-            var all = await _dbRepo.GetAllAsync();
+            var allItems = await repo.GetAllAsync();
 
-            var userEmail = User.Identity.Name ?? User.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
+            var restaurant = allItems
+                .OfType<Restaurant>()
+                .FirstOrDefault(r => r.Id == id);
 
-            // Check restaurants
-            if (restaurantIds != null && restaurantIds.Length > 0)
-            {
-                foreach (var id in restaurantIds)
-                {
-                    var r = all.OfType<Restaurant>().FirstOrDefault(x => x.Id == id);
-                    if (r == null) return Forbid();
-                    var validators = r.GetValidators();
-                    if (!validators.Contains(userEmail, StringComparer.OrdinalIgnoreCase))
-                        return Forbid();
-                }
-            }
+            if (restaurant == null)
+                return NotFound();
 
-            // Check menu items
-            if (menuItemIds != null && menuItemIds.Length > 0)
-            {
-                foreach (var id in menuItemIds)
-                {
-                    var m = all.OfType<MenuItem>().FirstOrDefault(x => x.Id == id);
-                    if (m == null) return Forbid();
-                    var validators = m.GetValidators();
-                    if (!validators.Contains(userEmail, StringComparer.OrdinalIgnoreCase))
-                        return Forbid();
-                }
-            }
+            var userEmail = User.Claims
+            .FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Email)
+            ?.Value;
 
-            await _dbRepo.ApproveAsync(restaurantIds ?? Array.Empty<int>(), menuItemIds ?? Array.Empty<Guid>());
 
-            return RedirectToAction("Verification");
+            if (!IsAdmin() && restaurant.OwnerEmailAddress != userEmail)
+                return Forbid();
+
+            var pendingMenuItems = allItems
+                .OfType<MenuItem>()
+                .Where(m =>
+                    m.RestaurantId == restaurant.Id &&
+                    m.Status == "Pending")
+                .ToList();
+
+            return View("VerifyItems", pendingMenuItems);
+        }
+
+        // SE3.3 — Approve action
+        [HttpPost]
+        [ServiceFilter(typeof(ApprovalAuthorizationFilter))]
+        public async Task<IActionResult> Approve(
+            int[] restaurantIds,
+            Guid[] menuItemIds,
+            [FromKeyedServices("Db")] IItemsRepository repo)
+        {
+            await repo.ApproveAsync(restaurantIds, menuItemIds);
+            return RedirectToAction(nameof(Catalog));
+        }
+
+        // Catalog view
+        public async Task<IActionResult> Catalog(
+            [FromKeyedServices("Db")] IItemsRepository repo)
+        {
+            var items = await repo.GetAllAsync();
+            return View(items);
         }
     }
 }

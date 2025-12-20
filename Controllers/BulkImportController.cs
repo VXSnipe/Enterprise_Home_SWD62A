@@ -57,7 +57,7 @@ namespace EnterpriseHomeAssignment.Controllers
             [FromKeyedServices("InMemory")] IItemsRepository tempRepo)
         {
             var items = (await tempRepo.GetAllAsync()).ToList();
-            
+
             if (!items.Any())
             {
                 TempData["Error"] = "No items to export. Please upload JSON first.";
@@ -107,7 +107,7 @@ namespace EnterpriseHomeAssignment.Controllers
             }
 
             stream.Position = 0;
-            return File(stream, "application/zip", "images-template.zip");
+            return File(stream, "application/zip", "images.zip");
         }
 
         [HttpPost]
@@ -123,7 +123,7 @@ namespace EnterpriseHomeAssignment.Controllers
 
             var items = (await tempRepo.GetAllAsync()).ToList();
 
-            // Resolve MenuItem → Restaurant relationships BEFORE saving
+            // Resolve MenuItem → Restaurant relationships
             var restaurants = items.OfType<Restaurant>().ToList();
             var menuItems = items.OfType<MenuItem>().ToList();
 
@@ -135,58 +135,167 @@ namespace EnterpriseHomeAssignment.Controllers
                     if (matchedRestaurant != null)
                     {
                         menuItem.Restaurant = matchedRestaurant;
-                        // RestaurantId will be set by EF when restaurant is saved first
                     }
                 }
             }
 
-            // Extract ZIP to a temp directory
             string tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             Directory.CreateDirectory(tempPath);
 
-            using (var archive = new ZipArchive(imagesZip.OpenReadStream()))
+            try
             {
-                archive.ExtractToDirectory(tempPath, true);
-            }
-
-            // Save images to /wwwroot/images/
-            string imagesFolder = Path.Combine(_env.WebRootPath, "images");
-            Directory.CreateDirectory(imagesFolder);
-
-            foreach (var folder in Directory.GetDirectories(tempPath))
-            {
-                string externalId = Path.GetFileName(folder).Replace("item-", "");
-
-                string file = Directory.GetFiles(folder).FirstOrDefault();
-                if (file == null) continue;
-
-                string newName = Guid.NewGuid().ToString() + Path.GetExtension(file);
-                string dest = Path.Combine(imagesFolder, newName);
-
-                System.IO.File.Copy(file, dest, true);
-
-                string path = "/images/" + newName;
-
-                foreach (var item in items)
+                using (var archive = new ZipArchive(imagesZip.OpenReadStream()))
                 {
-                    if (item is Restaurant r && r.ExternalId == externalId)
-                        r.ImagePath = path;
+                    archive.ExtractToDirectory(tempPath, true);
+                }
 
-                    if (item is MenuItem m && m.ExternalId == externalId)
-                        m.ImagePath = path;
+                // Find the root folder containing item-* directories
+                string searchPath = FindItemFoldersRoot(tempPath);
+
+                // Find all item-* folders recursively
+                var extractedFolders = FindAllItemFolders(searchPath);
+
+                // Ensure wwwroot/images folder exists
+                string imagesFolder = Path.Combine(_env.WebRootPath, "images");
+                if (!Directory.Exists(imagesFolder))
+                {
+                    Directory.CreateDirectory(imagesFolder);
+                }
+
+                // Process each folder
+                foreach (var folder in extractedFolders)
+                {
+                    string folderName = Path.GetFileName(folder);
+
+                    // Extract externalId - handle "item-" prefix
+                    string externalId = folderName;
+                    if (folderName.StartsWith("item-"))
+                    {
+                        externalId = folderName.Substring("item-".Length);
+                    }
+
+                    // Find image files
+                    var imageFiles = Directory.GetFiles(folder, "*.*", SearchOption.TopDirectoryOnly)
+                        .Where(f => {
+                            var ext = Path.GetExtension(f).ToLower();
+                            return ext == ".jpg" || ext == ".jpeg" || ext == ".png" ||
+                                   ext == ".gif" || ext == ".bmp" || ext == ".webp";
+                        })
+                        .ToList();
+
+                    string file = imageFiles.FirstOrDefault();
+                    if (file == null) continue;
+
+                    // Generate new filename
+                    string originalExt = Path.GetExtension(file);
+                    string newName = Guid.NewGuid().ToString() + originalExt.ToLower();
+                    string dest = Path.Combine(imagesFolder, newName);
+                    string path = "/images/" + newName;
+
+                    System.IO.File.Copy(file, dest, true);
+
+                    // Link image to items
+                    foreach (var item in items)
+                    {
+                        if (item is Restaurant r && r.ExternalId == externalId)
+                            r.ImagePath = path;
+                        else if (item is MenuItem m && m.ExternalId == externalId)
+                            m.ImagePath = path;
+                    }
+                }
+
+                // Save to DB with resolved relationships
+                await dbRepo.SaveAsync(items);
+
+                // Clear in-memory cache
+                if (tempRepo is EnterpriseHomeAssignment.Repositories.ItemsInMemoryRepository repo)
+                {
+                    repo.Clear();
+                }
+
+                TempData["Success"] = $"Successfully imported {restaurants.Count} restaurants and {menuItems.Count} menu items.";
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"Error processing images: {ex.Message}";
+                return RedirectToAction("Preview");
+            }
+            finally
+            {
+                // Cleanup temp directory
+                if (Directory.Exists(tempPath))
+                {
+                    try { Directory.Delete(tempPath, true); } catch { }
                 }
             }
 
-            // Save to DB with resolved relationships
-            await dbRepo.SaveAsync(items);
+            return RedirectToAction("Catalog", "Items", new { pending = true });
+        }
 
-            // Clear in-memory cache
-            if (tempRepo is EnterpriseHomeAssignment.Repositories.ItemsInMemoryRepository repo)
+        // Helper method to find the root folder containing item-* directories
+        private string FindItemFoldersRoot(string basePath)
+        {
+            // Check if there are item-* folders directly in basePath
+            var itemFolders = Directory.GetDirectories(basePath, "item-*");
+            if (itemFolders.Length > 0)
+                return basePath;
+
+            // Recursively search through subdirectories
+            var allDirectories = Directory.GetDirectories(basePath);
+
+            foreach (var dir in allDirectories)
             {
-                repo.Clear();
+                // Check this directory
+                itemFolders = Directory.GetDirectories(dir, "item-*");
+                if (itemFolders.Length > 0)
+                    return dir;
+
+                // Also check deeper
+                var subDirs = Directory.GetDirectories(dir);
+                foreach (var subDir in subDirs)
+                {
+                    itemFolders = Directory.GetDirectories(subDir, "item-*");
+                    if (itemFolders.Length > 0)
+                        return subDir;
+                }
             }
 
-            return RedirectToAction("Catalog", "Items");
+            return basePath;
+        }
+
+        // Helper method to recursively find all item-* folders
+        private List<string> FindAllItemFolders(string searchPath)
+        {
+            var result = new List<string>();
+
+            // First, look for item-* folders in current directory
+            var itemFolders = Directory.GetDirectories(searchPath, "item-*");
+            result.AddRange(itemFolders);
+
+            // Also look for folders that might be item folders without the prefix
+            var allFolders = Directory.GetDirectories(searchPath);
+            foreach (var folder in allFolders)
+            {
+                string folderName = Path.GetFileName(folder);
+                // If it's not already an item-* folder, check if it looks like an item folder
+                if (!folderName.StartsWith("item-") && (folderName == "r1" || folderName == "m1" ||
+                    folderName.StartsWith("r-") || folderName.StartsWith("m-")))
+                {
+                    result.Add(folder);
+                }
+            }
+
+            // If we didn't find any in current directory, search recursively
+            if (result.Count == 0)
+            {
+                var allDirectories = Directory.GetDirectories(searchPath);
+                foreach (var dir in allDirectories)
+                {
+                    result.AddRange(FindAllItemFolders(dir));
+                }
+            }
+
+            return result;
         }
     }
 }

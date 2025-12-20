@@ -7,25 +7,27 @@ namespace EnterpriseHomeAssignment.Models
     {
         public int Id { get; set; }
 
-        // 👇 ADD THIS EXACT PROPERTY
-        public string ExternalId { get; set; }   // REQUIRED for ZIP + mapping
+        [Required]
+        public string ExternalId { get; set; } = null!;
 
-        public string Name { get; set; }
-        public string OwnerEmailAddress { get; set; }
+        [Required]
+        public string Name { get; set; } = null!;
 
-        public string Description { get; set; }
-        public string Address { get; set; }
-        public string Phone { get; set; }
+        [Required, EmailAddress]
+        public string OwnerEmailAddress { get; set; } = null!;
 
-        public string Status { get; set; }
-        public string ImagePath { get; set; }
+        [Required]
+        public string Status { get; set; } = null!;
 
-        public List<MenuItem> MenuItems { get; set; }
+        public string? Description { get; set; }
+        public string? Address { get; set; }
+        public string? Phone { get; set; }
+        public string? ImagePath { get; set; }
 
-        // IItemValidating implementation
+        public List<MenuItem> MenuItems { get; set; } = new();
+
         public List<string> GetValidators()
         {
-            // TODO: read from configuration in real app; use default admin
             return new List<string> { "admin@example.com" };
         }
 
